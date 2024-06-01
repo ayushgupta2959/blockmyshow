@@ -1,27 +1,99 @@
-import { useEffect, useState } from 'react'
-import { ethers } from 'ethers'
+import { useEffect, useState } from "react";
+import { ethers } from "ethers";
 
 // Components
-import Navigation from './components/Navigation'
-import Sort from './components/Sort'
-import Card from './components/Card'
-import SeatChart from './components/SeatChart'
+import Navigation from "./components/Navigation";
+import Sort from "./components/Sort";
+import Card from "./components/Card";
+import SeatChart from "./components/SeatChart";
 
 // ABIs
-import BlockMyShow from './abis/BlockMyShow.json'
+import BlockMyShow from "./abis/BlockMyShow.json";
 
 // Config
-import config from './config.json'
+import config from "./config.json";
 
 function App() {
+  const [provider, setProvider] = useState(null);
+  const [account, setAccount] = useState(null);
+
+  const [blockMyShow, setBlockMyShow] = useState(null);
+  const [occasions, setOccasions] = useState([]);
+
+  const [occasion, setOccasion] = useState({});
+  const [toggle, setToggle] = useState(false);
+
+  const loadBlockchainData = async () => {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    setProvider(provider);
+
+    const network = await provider.getNetwork();
+    const blockMyShow = new ethers.Contract(
+      config[network.chainId].BlockMyShow.address,
+      BlockMyShow,
+      provider
+    );
+    setBlockMyShow(blockMyShow);
+
+    const totalOccasions = await blockMyShow.totalOccasions();
+    const occasions = [];
+
+    for (var i = 1; i <= totalOccasions; i++) {
+      const occasion = await blockMyShow.getOccasion(i);
+      occasions.push(occasion);
+    }
+
+    setOccasions(occasions);
+
+    window.ethereum.on("accountsChanged", async () => {
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+      const account = ethers.utils.getAddress(accounts[0]);
+      setAccount(account);
+    });
+  };
+
+  useEffect(() => {
+    loadBlockchainData();
+  }, []);
 
   return (
     <div>
       <header>
+        <Navigation account={account} setAccount={setAccount} />
 
-        <h2 className="header__title"><strong>Welcome to BlockMyShow</strong></h2>
+        <h2 className="header__title">
+          <strong>Event</strong> Tickets
+        </h2>
       </header>
 
+      <Sort />
+
+      <div className="cards">
+        {occasions.map((occasion, index) => (
+          <Card
+            occasion={occasion}
+            id={index + 1}
+            tokenMaster={blockMyShow}
+            provider={provider}
+            account={account}
+            toggle={toggle}
+            setToggle={setToggle}
+            setOccasion={setOccasion}
+            key={index}
+          />
+        ))}
+      </div>
+
+      {toggle && (
+        <SeatChart
+          occasion={occasion}
+          blockMyShow={blockMyShow}
+          provider={provider}
+          setToggle={setToggle}
+        />
+      )}
     </div>
   );
 }
