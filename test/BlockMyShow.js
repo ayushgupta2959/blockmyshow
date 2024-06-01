@@ -105,4 +105,33 @@ describe("BlockMyShow", () => {
       expect(balance).to.be.equal(AMOUNT);
     });
   });
+
+  describe("Withdrawing", () => {
+    const ID = 1;
+    const SEAT = 50;
+    const AMOUNT = ethers.utils.parseUnits("1", "ether");
+    let balanceBefore;
+
+    beforeEach(async () => {
+      balanceBefore = await ethers.provider.getBalance(deployer.address);
+
+      let transaction = await blockMyShow
+        .connect(buyer)
+        .mint(ID, SEAT, { value: AMOUNT });
+      await transaction.wait();
+
+      transaction = await blockMyShow.connect(deployer).withdraw();
+      await transaction.wait();
+    });
+
+    it("Updates the owner balance", async () => {
+      const balanceAfter = await ethers.provider.getBalance(deployer.address);
+      expect(balanceAfter).to.be.greaterThan(balanceBefore);
+    });
+
+    it("Updates the contract balance", async () => {
+      const balance = await ethers.provider.getBalance(blockMyShow.address);
+      expect(balance).to.equal(0);
+    });
+  });
 });
