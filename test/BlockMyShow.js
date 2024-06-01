@@ -66,4 +66,43 @@ describe("BlockMyShow", () => {
       expect(totalOccasions).to.be.equal(1);
     });
   });
+
+  describe("Minting", () => {
+    const ID = 1;
+    const SEAT = 50;
+    const AMOUNT = ethers.utils.parseUnits("1", "ether");
+
+    beforeEach(async () => {
+      const transaction = await blockMyShow
+        .connect(buyer)
+        .mint(ID, SEAT, { value: AMOUNT });
+      await transaction.wait();
+    });
+
+    it("Updates ticket count", async () => {
+      const occasion = await blockMyShow.getOccasion(1);
+      expect(occasion.tickets).to.be.equal(OCCASION_MAX_TICKETS - 1);
+    });
+
+    it("Updates buying status", async () => {
+      const status = await blockMyShow.hasBought(ID, buyer.address);
+      expect(status).to.be.equal(true);
+    });
+
+    it("Updates seat status", async () => {
+      const owner = await blockMyShow.seatTaken(ID, SEAT);
+      expect(owner).to.equal(buyer.address);
+    });
+
+    it("Updates overall seating status", async () => {
+      const seats = await blockMyShow.getSeatsTaken(ID);
+      expect(seats.length).to.equal(1);
+      expect(seats[0]).to.equal(SEAT);
+    });
+
+    it("Updates the contract balance", async () => {
+      const balance = await ethers.provider.getBalance(blockMyShow.address);
+      expect(balance).to.be.equal(AMOUNT);
+    });
+  });
 });
